@@ -1,0 +1,2418 @@
+Index: src/main/resources/application.properties
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># ===================================================================\n# Spring Boot application properties\n#\n# For a list of common properties, check the Spring Boot docs:\n# https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html\n# ===================================================================\n\n\n# ----------------------------------------\n# CORE PROPERTIES\n# ----------------------------------------\n\n# BANNER\nbanner.location=classpath:banner.txt\n\n# LOGGING\nlogging.level.root=INFO\nlogging.level.org.apache=WARN\nlogging.level.org.springframework=WARN\nlogging.level.org.kurento=INFO\nlogging.level.org.kurento.tutorial=INFO\n\n# OUTPUT\n# Terminal color output; one of [ALWAYS, DETECT, NEVER]\nspring.output.ansi.enabled=DETECT\n\n\n# ----------------------------------------\n# WEB PROPERTIES\n# ----------------------------------------\n\n# EMBEDDED SERVER CONFIGURATION\nserver.port=${demo.port}\nserver.ssl.key-store=classpath:keystore.jks\nserver.ssl.key-store-password=kurento\nserver.ssl.key-store-type=JKS\nserver.ssl.key-alias=kurento-selfsigned\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/resources/application.properties	(revision 785b09a357811f5ab7b5cbfc3eb82798b3177c7c)
++++ src/main/resources/application.properties	(date 1611802463565)
+@@ -14,11 +14,11 @@
+ banner.location=classpath:banner.txt
+ 
+ # LOGGING
+-logging.level.root=INFO
++logging.level.root=DEBUG
+ logging.level.org.apache=WARN
+ logging.level.org.springframework=WARN
+-logging.level.org.kurento=INFO
+-logging.level.org.kurento.tutorial=INFO
++logging.level.org.kurento=DEBUG
++logging.level.org.kurento.tutorial=DEBUG
+ 
+ # OUTPUT
+ # Terminal color output; one of [ALWAYS, DETECT, NEVER]
+Index: src/main/java/org/kurento/tutorial/one2onecalladv/CallMediaPipeline.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>/*\n * (C) Copyright 2014 Kurento (http://kurento.org/)\n * \n * Licensed under the Apache License, Version 2.0 (the \"License\");\n * you may not use this file except in compliance with the License.\n * You may obtain a copy of the License at\n *\n *   http://www.apache.org/licenses/LICENSE-2.0\n *\n * Unless required by applicable law or agreed to in writing, software\n * distributed under the License is distributed on an \"AS IS\" BASIS,\n * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n * See the License for the specific language governing permissions and\n * limitations under the License.\n */\n\npackage org.kurento.tutorial.one2onecalladv;\n\nimport java.text.SimpleDateFormat;\nimport java.util.Date;\n\nimport org.kurento.client.FaceOverlayFilter;\nimport org.kurento.client.KurentoClient;\nimport org.kurento.client.MediaPipeline;\nimport org.kurento.client.RecorderEndpoint;\nimport org.kurento.client.WebRtcEndpoint;\n\n/**\n * Media Pipeline (connection of Media Elements) for the advanced one to one video communication.\n * \n * @author Boni Garcia (bgarcia@gsyc.es)\n * @author Micael Gallego (micael.gallego@gmail.com)\n * @since 5.0.0\n */\npublic class CallMediaPipeline {\n\n  private static final SimpleDateFormat df = new SimpleDateFormat(\"yyyy-MM-dd_HH-mm-ss-S\");\n  public static final String RECORDING_PATH = \"file:///tmp/\" + df.format(new Date()) + \"-\";\n  public static final String RECORDING_EXT = \".webm\";\n\n  private final MediaPipeline pipeline;\n  private final WebRtcEndpoint webRtcCaller;\n  private final WebRtcEndpoint webRtcCallee;\n  private final RecorderEndpoint recorderCaller;\n  private final RecorderEndpoint recorderCallee;\n\n  public CallMediaPipeline(KurentoClient kurento, String from, String to) {\n\n    // Media pipeline\n    pipeline = kurento.createMediaPipeline();\n\n    // Media Elements (WebRtcEndpoint, RecorderEndpoint, FaceOverlayFilter)\n    webRtcCaller = new WebRtcEndpoint.Builder(pipeline).build();\n    webRtcCallee = new WebRtcEndpoint.Builder(pipeline).build();\n\n    recorderCaller = new RecorderEndpoint.Builder(pipeline, RECORDING_PATH + from + RECORDING_EXT)\n        .build();\n    recorderCallee = new RecorderEndpoint.Builder(pipeline, RECORDING_PATH + to + RECORDING_EXT)\n        .build();\n\n    // String appServerUrl = System.getProperty(\"app.server.url\",\n    //    One2OneCallAdvApp.DEFAULT_APP_SERVER_URL);\n    String appServerUrl = \"http://files.openvidu.io\";\n    FaceOverlayFilter faceOverlayFilterCaller = new FaceOverlayFilter.Builder(pipeline).build();\n    faceOverlayFilterCaller.setOverlayedImage(appServerUrl + \"/img/mario-wings.png\", -0.35F, -1.2F,\n        1.6F, 1.6F);\n\n    FaceOverlayFilter faceOverlayFilterCallee = new FaceOverlayFilter.Builder(pipeline).build();\n    faceOverlayFilterCallee.setOverlayedImage(appServerUrl + \"/img/Hat.png\", -0.2F, -1.35F, 1.5F,\n        1.5F);\n\n    // Connections\n    webRtcCaller.connect(faceOverlayFilterCaller);\n    faceOverlayFilterCaller.connect(webRtcCallee);\n    faceOverlayFilterCaller.connect(recorderCaller);\n\n    webRtcCallee.connect(faceOverlayFilterCallee);\n    faceOverlayFilterCallee.connect(webRtcCaller);\n    faceOverlayFilterCallee.connect(recorderCallee);\n  }\n\n  public void record() {\n    recorderCaller.record();\n    recorderCallee.record();\n  }\n\n  public String generateSdpAnswerForCaller(String sdpOffer) {\n    return webRtcCaller.processOffer(sdpOffer);\n  }\n\n  public String generateSdpAnswerForCallee(String sdpOffer) {\n    return webRtcCallee.processOffer(sdpOffer);\n  }\n\n  public MediaPipeline getPipeline() {\n    return pipeline;\n  }\n\n  public WebRtcEndpoint getCallerWebRtcEp() {\n    return webRtcCaller;\n  }\n\n  public WebRtcEndpoint getCalleeWebRtcEp() {\n    return webRtcCallee;\n  }\n}\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/org/kurento/tutorial/one2onecalladv/CallMediaPipeline.java	(revision 785b09a357811f5ab7b5cbfc3eb82798b3177c7c)
++++ src/main/java/org/kurento/tutorial/one2onecalladv/CallMediaPipeline.java	(date 1611803146881)
+@@ -35,7 +35,7 @@
+ public class CallMediaPipeline {
+ 
+   private static final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-S");
+-  public static final String RECORDING_PATH = "file:///tmp/" + df.format(new Date()) + "-";
++  public static final String RECORDING_PATH = "/home/lanhuong/Worspace/ITech/video/" + df.format(new Date()) + "-";
+   public static final String RECORDING_EXT = ".webm";
+ 
+   private final MediaPipeline pipeline;
+@@ -61,22 +61,29 @@
+     // String appServerUrl = System.getProperty("app.server.url",
+     //    One2OneCallAdvApp.DEFAULT_APP_SERVER_URL);
+     String appServerUrl = "http://files.openvidu.io";
+-    FaceOverlayFilter faceOverlayFilterCaller = new FaceOverlayFilter.Builder(pipeline).build();
+-    faceOverlayFilterCaller.setOverlayedImage(appServerUrl + "/img/mario-wings.png", -0.35F, -1.2F,
+-        1.6F, 1.6F);
++//    FaceOverlayFilter faceOverlayFilterCaller = new FaceOverlayFilter.Builder(pipeline).build();
++//    faceOverlayFilterCaller.setOverlayedImage(appServerUrl + "/img/mario-wings.png", -0.35F, -1.2F,
++//        1.6F, 1.6F);
+ 
+-    FaceOverlayFilter faceOverlayFilterCallee = new FaceOverlayFilter.Builder(pipeline).build();
+-    faceOverlayFilterCallee.setOverlayedImage(appServerUrl + "/img/Hat.png", -0.2F, -1.35F, 1.5F,
+-        1.5F);
++//    FaceOverlayFilter faceOverlayFilterCallee = new FaceOverlayFilter.Builder(pipeline).build();
++//    faceOverlayFilterCallee.setOverlayedImage(appServerUrl + "/img/Hat.png", -0.2F, -1.35F, 1.5F,
++//        1.5F);
+ 
+     // Connections
+-    webRtcCaller.connect(faceOverlayFilterCaller);
+-    faceOverlayFilterCaller.connect(webRtcCallee);
+-    faceOverlayFilterCaller.connect(recorderCaller);
++//    webRtcCaller.connect(faceOverlayFilterCaller);
++//    faceOverlayFilterCaller.connect(webRtcCallee);
++//    faceOverlayFilterCaller.connect(recorderCaller);
++//
++//    webRtcCallee.connect(faceOverlayFilterCallee);
++//    faceOverlayFilterCallee.connect(webRtcCaller);
++//    faceOverlayFilterCallee.connect(recorderCallee);
++
+ 
+-    webRtcCallee.connect(faceOverlayFilterCallee);
+-    faceOverlayFilterCallee.connect(webRtcCaller);
+-    faceOverlayFilterCallee.connect(recorderCallee);
++    webRtcCaller.connect(this.recorderCallee);
++    webRtcCaller.connect(this.webRtcCallee);
++
++    webRtcCallee.connect(this.webRtcCaller);
++    webRtcCallee.connect(this.recorderCallee);
+   }
+ 
+   public void record() {
+Index: src/main/resources/static/js/index.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>/*\n * (C) Copyright 2014 Kurento (http://kurento.org/)\n *\n * Licensed under the Apache License, Version 2.0 (the \"License\");\n * you may not use this file except in compliance with the License.\n * You may obtain a copy of the License at\n *\n *   http://www.apache.org/licenses/LICENSE-2.0\n *\n * Unless required by applicable law or agreed to in writing, software\n * distributed under the License is distributed on an \"AS IS\" BASIS,\n * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n * See the License for the specific language governing permissions and\n * limitations under the License.\n *\n */\n\nvar ws = new WebSocket('wss://' + location.host + '/call');\nvar videoInput;\nvar videoOutput;\nvar webRtcPeer;\nvar from;\n\nvar registerName = null;\nvar registerState = null;\nconst NOT_REGISTERED = 0;\nconst REGISTERING = 1;\nconst REGISTERED = 2;\n\nfunction setRegisterState(nextState) {\n\tswitch (nextState) {\n\tcase NOT_REGISTERED:\n\t\tenableButton('#register', 'register()');\n\t\tsetCallState(DISABLED);\n\t\tbreak;\n\tcase REGISTERING:\n\t\tdisableButton('#register');\n\t\tbreak;\n\tcase REGISTERED:\n\t\tdisableButton('#register');\n\t\tsetCallState(NO_CALL);\n\t\tbreak;\n\tdefault:\n\t\treturn;\n\t}\n\tregisterState = nextState;\n}\n\nvar callState = null;\nconst NO_CALL = 0;\nconst IN_CALL = 1;\nconst POST_CALL = 2;\nconst DISABLED = 3;\nconst IN_PLAY = 4;\n\nfunction setCallState(nextState) {\n\tswitch (nextState) {\n\tcase NO_CALL:\n\t\tenableButton('#call', 'call()');\n\t\tdisableButton('#terminate');\n\t\tdisableButton('#play');\n\t\tbreak;\n\tcase DISABLED:\n\t\tdisableButton('#call');\n\t\tdisableButton('#terminate');\n\t\tdisableButton('#play');\n\t\tbreak;\n\tcase POST_CALL:\n\t\tenableButton('#call', 'call()');\n\t\tdisableButton('#terminate');\n\t\tenableButton('#play', 'play()');\n\t\tbreak;\n\tcase IN_CALL:\n\tcase IN_PLAY:\n\t\tdisableButton('#call');\n\t\tenableButton('#terminate', 'stop()');\n\t\tdisableButton('#play');\n\t\tbreak;\n\tdefault:\n\t\treturn;\n\t}\n\tcallState = nextState;\n}\n\nfunction disableButton(id) {\n\t$(id).attr('disabled', true);\n\t$(id).removeAttr('onclick');\n}\n\nfunction enableButton(id, functionName) {\n\t$(id).attr('disabled', false);\n\t$(id).attr('onclick', functionName);\n}\n\nwindow.onload = function() {\n\tconsole = new Console();\n\tsetRegisterState(NOT_REGISTERED);\n\tvar drag = new Draggabilly(document.getElementById('videoSmall'));\n\tvideoInput = document.getElementById('videoInput');\n\tvideoOutput = document.getElementById('videoOutput');\n\tdocument.getElementById('name').focus();\n}\n\nwindow.onbeforeunload = function() {\n\tws.close();\n}\n\nws.onmessage = function(message) {\n\tvar parsedMessage = JSON.parse(message.data);\n\tconsole.info('Received message: ' + message.data);\n\n\tswitch (parsedMessage.id) {\n\tcase 'registerResponse':\n\t\tregisterResponse(parsedMessage);\n\t\tbreak;\n\tcase 'callResponse':\n\t\tcallResponse(parsedMessage);\n\t\tbreak;\n\tcase 'incomingCall':\n\t\tincomingCall(parsedMessage);\n\t\tbreak;\n\tcase 'startCommunication':\n\t\tstartCommunication(parsedMessage);\n\t\tbreak;\n\tcase 'stopCommunication':\n\t\tconsole.info('Communication ended by remote peer');\n\t\tstop(true);\n\t\tbreak;\n\tcase 'playResponse':\n\t\tplayResponse(parsedMessage);\n\t\tbreak;\n\tcase 'playEnd':\n\t\tplayEnd();\n\t\tbreak;\n\tcase 'iceCandidate':\n\t\twebRtcPeer.addIceCandidate(parsedMessage.candidate, function(error) {\n\t\t\tif (error)\n\t\t\t\treturn console.error('Error adding candidate: ' + error);\n\t\t});\n\t\tbreak;\n\tdefault:\n\t\tconsole.error('Unrecognized message', parsedMessage);\n\t}\n}\n\nfunction registerResponse(message) {\n\tif (message.response == 'accepted') {\n\t\tsetRegisterState(REGISTERED);\n\t\tdocument.getElementById('peer').focus();\n\t} else {\n\t\tsetRegisterState(NOT_REGISTERED);\n\t\tvar errorMessage = message.response ? message.response\n\t\t\t\t: 'Unknown reason for register rejection.';\n\t\tconsole.log(errorMessage);\n\t\tdocument.getElementById('name').focus();\n\t\talert('Error registering user. See console for further information.');\n\t}\n}\n\nfunction callResponse(message) {\n\tif (message.response != 'accepted') {\n\t\tconsole.info('Call not accepted by peer. Closing call');\n\t\tstop();\n\t\tsetCallState(NO_CALL);\n\t\tif (message.message) {\n\t\t\talert(message.message);\n\t\t}\n\t} else {\n\t\tsetCallState(IN_CALL);\n\t\twebRtcPeer.processAnswer(message.sdpAnswer, function(error) {\n\t\t\tif (error)\n\t\t\t\treturn console.error(error);\n\t\t});\n\t}\n}\n\nfunction startCommunication(message) {\n\tsetCallState(IN_CALL);\n\twebRtcPeer.processAnswer(message.sdpAnswer, function(error) {\n\t\tif (error)\n\t\t\treturn console.error(error);\n\t});\n}\n\nfunction playResponse(message) {\n\tif (message.response != 'accepted') {\n\t\thideSpinner(videoOutput);\n\t\tdocument.getElementById('videoSmall').style.display = 'block';\n\t\talert(message.error);\n\t\tdocument.getElementById('peer').focus();\n\t\tsetCallState(POST_CALL);\n\t} else {\n\t\tsetCallState(IN_PLAY);\n\t\twebRtcPeer.processAnswer(message.sdpAnswer, function(error) {\n\t\t\tif (error)\n\t\t\t\treturn console.error(error);\n\t\t});\n\t}\n}\n\nfunction incomingCall(message) {\n\t// If bussy just reject without disturbing user\n\tif (callState != NO_CALL && callState != POST_CALL) {\n\t\tvar response = {\n\t\t\tid : 'incomingCallResponse',\n\t\t\tfrom : message.from,\n\t\t\tcallResponse : 'reject',\n\t\t\tmessage : 'bussy'\n\t\t};\n\t\treturn sendMessage(response);\n\t}\n\n\tsetCallState(DISABLED);\n\tif (confirm('User ' + message.from\n\t\t\t+ ' is calling you. Do you accept the call?')) {\n\t\tshowSpinner(videoInput, videoOutput);\n\n\t\tfrom = message.from;\n\t\tvar options = {\n\t\t\tlocalVideo : videoInput,\n\t\t\tremoteVideo : videoOutput,\n\t\t\tonicecandidate : onIceCandidate\n\t\t}\n\t\twebRtcPeer = new kurentoUtils.WebRtcPeer.WebRtcPeerSendrecv(options,\n\t\t\t\tfunction(error) {\n\t\t\t\t\tif (error) {\n\t\t\t\t\t\treturn console.error(error);\n\t\t\t\t\t}\n\t\t\t\t\tthis.generateOffer(onOfferIncomingCall);\n\t\t\t\t});\n\t} else {\n\t\tvar response = {\n\t\t\tid : 'incomingCallResponse',\n\t\t\tfrom : message.from,\n\t\t\tcallResponse : 'reject',\n\t\t\tmessage : 'user declined'\n\t\t};\n\t\tsendMessage(response);\n\t\tstop();\n\t}\n}\n\nfunction onOfferIncomingCall(error, offerSdp) {\n\tif (error)\n\t\treturn console.error('Error generating the offer ' + error);\n\tvar response = {\n\t\tid : 'incomingCallResponse',\n\t\tfrom : from,\n\t\tcallResponse : 'accept',\n\t\tsdpOffer : offerSdp\n\t};\n\tsendMessage(response);\n}\n\nfunction register() {\n\tvar name = document.getElementById('name').value;\n\tif (name == '') {\n\t\twindow.alert('You must insert your user name');\n\t\tdocument.getElementById('name').focus();\n\t\treturn;\n\t}\n\tsetRegisterState(REGISTERING);\n\n\tvar message = {\n\t\tid : 'register',\n\t\tname : name\n\t};\n\tsendMessage(message);\n}\n\nfunction call() {\n\tif (document.getElementById('peer').value == '') {\n\t\tdocument.getElementById('peer').focus();\n\t\twindow.alert('You must specify the peer name');\n\t\treturn;\n\t}\n\tsetCallState(DISABLED);\n\tshowSpinner(videoInput, videoOutput);\n\n\tvar options = {\n\t\tlocalVideo : videoInput,\n\t\tremoteVideo : videoOutput,\n\t\tonicecandidate : onIceCandidate\n\t}\n\twebRtcPeer = new kurentoUtils.WebRtcPeer.WebRtcPeerSendrecv(options,\n\t\t\tfunction(error) {\n\t\t\t\tif (error) {\n\t\t\t\t\treturn console.error(error);\n\t\t\t\t}\n\t\t\t\tthis.generateOffer(onOfferCall);\n\t\t\t});\n}\n\nfunction onOfferCall(error, offerSdp) {\n\tif (error)\n\t\treturn console.error('Error generating the offer ' + error);\n\tconsole.log('Invoking SDP offer callback function');\n\tvar message = {\n\t\tid : 'call',\n\t\tfrom : document.getElementById('name').value,\n\t\tto : document.getElementById('peer').value,\n\t\tsdpOffer : offerSdp\n\t};\n\tsendMessage(message);\n}\n\nfunction play() {\n\tvar peer = document.getElementById('peer').value;\n\tif (peer == '') {\n\t\twindow.alert(\"You must insert the name of the user recording to be played (field 'Peer')\");\n\t\tdocument.getElementById('peer').focus();\n\t\treturn;\n\t}\n\n\tdocument.getElementById('videoSmall').style.display = 'none';\n\tsetCallState(DISABLED);\n\tshowSpinner(videoOutput);\n\n\tvar options = {\n\t\tremoteVideo : videoOutput,\n\t\tonicecandidate : onIceCandidate\n\t}\n\twebRtcPeer = new kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(options,\n\t\t\tfunction(error) {\n\t\t\t\tif (error) {\n\t\t\t\t\treturn console.error(error);\n\t\t\t\t}\n\t\t\t\tthis.generateOffer(onOfferPlay);\n\t\t\t});\n}\n\nfunction onOfferPlay(error, offerSdp) {\n\tconsole.log('Invoking SDP offer callback function');\n\tvar message = {\n\t\tid : 'play',\n\t\tuser : document.getElementById('peer').value,\n\t\tsdpOffer : offerSdp\n\t};\n\tsendMessage(message);\n}\n\nfunction playEnd() {\n\tsetCallState(POST_CALL);\n\thideSpinner(videoInput, videoOutput);\n\tdocument.getElementById('videoSmall').style.display = 'block';\n}\n\nfunction stop(message) {\n\tvar stopMessageId = (callState == IN_CALL) ? 'stop' : 'stopPlay';\n\tsetCallState(POST_CALL);\n\tif (webRtcPeer) {\n\t\twebRtcPeer.dispose();\n\t\twebRtcPeer = null;\n\n\t\tif (!message) {\n\t\t\tvar message = {\n\t\t\t\tid : stopMessageId\n\t\t\t}\n\t\t\tsendMessage(message);\n\t\t}\n\t}\n\thideSpinner(videoInput, videoOutput);\n\tdocument.getElementById('videoSmall').style.display = 'block';\n}\n\nfunction sendMessage(message) {\n\tvar jsonMessage = JSON.stringify(message);\n\tconsole.log('Sending message: ' + jsonMessage);\n\tws.send(jsonMessage);\n}\n\nfunction onIceCandidate(candidate) {\n\tconsole.log('Local candidate ' + JSON.stringify(candidate));\n\n\tvar message = {\n\t\tid : 'onIceCandidate',\n\t\tcandidate : candidate\n\t};\n\tsendMessage(message);\n}\n\nfunction showSpinner() {\n\tfor (var i = 0; i < arguments.length; i++) {\n\t\targuments[i].poster = './img/transparent-1px.png';\n\t\targuments[i].style.background = 'center transparent url(\"./img/spinner.gif\") no-repeat';\n\t}\n}\n\nfunction hideSpinner() {\n\tfor (var i = 0; i < arguments.length; i++) {\n\t\targuments[i].src = '';\n\t\targuments[i].poster = './img/webrtc.png';\n\t\targuments[i].style.background = '';\n\t}\n}\n\n/**\n * Lightbox utility (to display media pipeline image in a modal dialog)\n */\n$(document).delegate('*[data-toggle=\"lightbox\"]', 'click', function(event) {\n\tevent.preventDefault();\n\t$(this).ekkoLightbox();\n});\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/resources/static/js/index.js	(revision 785b09a357811f5ab7b5cbfc3eb82798b3177c7c)
++++ src/main/resources/static/js/index.js	(date 1611803545756)
+@@ -58,7 +58,7 @@
+ 	case NO_CALL:
+ 		enableButton('#call', 'call()');
+ 		disableButton('#terminate');
+-		disableButton('#play');
++		enableButton('#play', 'play()');
+ 		break;
+ 	case DISABLED:
+ 		disableButton('#call');
+@@ -74,7 +74,7 @@
+ 	case IN_PLAY:
+ 		disableButton('#call');
+ 		enableButton('#terminate', 'stop()');
+-		disableButton('#play');
++		enableButton('#play', 'play()');
+ 		break;
+ 	default:
+ 		return;
+Index: .idea/libraries/Maven__org_kurento_kms_api_filters_6_15_0.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_kurento_kms_api_filters_6_15_0.xml	(date 1611797483942)
++++ .idea/libraries/Maven__org_kurento_kms_api_filters_6_15_0.xml	(date 1611797483942)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.kurento:kms-api-filters:6.15.0">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kms-api-filters/6.15.0/kms-api-filters-6.15.0.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kms-api-filters/6.15.0/kms-api-filters-6.15.0-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kms-api-filters/6.15.0/kms-api-filters-6.15.0-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_kurento_kurento_client_6_15_0.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_kurento_kurento_client_6_15_0.xml	(date 1611797483950)
++++ .idea/libraries/Maven__org_kurento_kurento_client_6_15_0.xml	(date 1611797483950)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.kurento:kurento-client:6.15.0">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-client/6.15.0/kurento-client-6.15.0.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-client/6.15.0/kurento-client-6.15.0-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-client/6.15.0/kurento-client-6.15.0-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_kurento_kurento_commons_6_15_0.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_kurento_kurento_commons_6_15_0.xml	(date 1611797483954)
++++ .idea/libraries/Maven__org_kurento_kurento_commons_6_15_0.xml	(date 1611797483954)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.kurento:kurento-commons:6.15.0">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-commons/6.15.0/kurento-commons-6.15.0.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-commons/6.15.0/kurento-commons-6.15.0-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-commons/6.15.0/kurento-commons-6.15.0-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_kurento_kurento_jsonrpc_client_6_15_0.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_kurento_kurento_jsonrpc_client_6_15_0.xml	(date 1611797483962)
++++ .idea/libraries/Maven__org_kurento_kurento_jsonrpc_client_6_15_0.xml	(date 1611797483962)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.kurento:kurento-jsonrpc-client:6.15.0">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-jsonrpc-client/6.15.0/kurento-jsonrpc-client-6.15.0.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-jsonrpc-client/6.15.0/kurento-jsonrpc-client-6.15.0-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-jsonrpc-client/6.15.0/kurento-jsonrpc-client-6.15.0-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_kurento_kurento_utils_js_6_15_0.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_kurento_kurento_utils_js_6_15_0.xml	(date 1611797483966)
++++ .idea/libraries/Maven__org_kurento_kurento_utils_js_6_15_0.xml	(date 1611797483966)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.kurento:kurento-utils-js:6.15.0">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-utils-js/6.15.0/kurento-utils-js-6.15.0.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-utils-js/6.15.0/kurento-utils-js-6.15.0-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kurento-utils-js/6.15.0/kurento-utils-js-6.15.0-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_slf4j_jul_to_slf4j_1_7_30.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_slf4j_jul_to_slf4j_1_7_30.xml	(date 1611797483974)
++++ .idea/libraries/Maven__org_slf4j_jul_to_slf4j_1_7_30.xml	(date 1611797483974)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.slf4j:jul-to-slf4j:1.7.30">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/jul-to-slf4j/1.7.30/jul-to-slf4j-1.7.30.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/jul-to-slf4j/1.7.30/jul-to-slf4j-1.7.30-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/jul-to-slf4j/1.7.30/jul-to-slf4j-1.7.30-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_slf4j_slf4j_api_1_7_26.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_slf4j_slf4j_api_1_7_26.xml	(date 1611797483978)
++++ .idea/libraries/Maven__org_slf4j_slf4j_api_1_7_26.xml	(date 1611797483978)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.slf4j:slf4j-api:1.7.26">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.26/slf4j-api-1.7.26.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.26/slf4j-api-1.7.26-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.26/slf4j-api-1.7.26-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_boot_spring_boot_2_2_4_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_boot_spring_boot_2_2_4_RELEASE.xml	(date 1611797483986)
++++ .idea/libraries/Maven__org_springframework_boot_spring_boot_2_2_4_RELEASE.xml	(date 1611797483986)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework.boot:spring-boot:2.2.4.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot/2.2.4.RELEASE/spring-boot-2.2.4.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot/2.2.4.RELEASE/spring-boot-2.2.4.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot/2.2.4.RELEASE/spring-boot-2.2.4.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_el_9_0_30.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_el_9_0_30.xml	(date 1611797483898)
++++ .idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_el_9_0_30.xml	(date 1611797483898)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.apache.tomcat.embed:tomcat-embed-el:9.0.30">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/tomcat/embed/tomcat-embed-el/9.0.30/tomcat-embed-el-9.0.30.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/tomcat/embed/tomcat-embed-el/9.0.30/tomcat-embed-el-9.0.30-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/tomcat/embed/tomcat-embed-el/9.0.30/tomcat-embed-el-9.0.30-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_websocket_9_0_30.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_websocket_9_0_30.xml	(date 1611797483902)
++++ .idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_websocket_9_0_30.xml	(date 1611797483902)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.apache.tomcat.embed:tomcat-embed-websocket:9.0.30">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/tomcat/embed/tomcat-embed-websocket/9.0.30/tomcat-embed-websocket-9.0.30.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/tomcat/embed/tomcat-embed-websocket/9.0.30/tomcat-embed-websocket-9.0.30-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/tomcat/embed/tomcat-embed-websocket/9.0.30/tomcat-embed-websocket-9.0.30-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_checkerframework_checker_qual_2_5_2.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_checkerframework_checker_qual_2_5_2.xml	(date 1611797483910)
++++ .idea/libraries/Maven__org_checkerframework_checker_qual_2_5_2.xml	(date 1611797483910)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.checkerframework:checker-qual:2.5.2">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/checkerframework/checker-qual/2.5.2/checker-qual-2.5.2.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/checkerframework/checker-qual/2.5.2/checker-qual-2.5.2-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/checkerframework/checker-qual/2.5.2/checker-qual-2.5.2-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_codehaus_mojo_animal_sniffer_annotations_1_17.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_codehaus_mojo_animal_sniffer_annotations_1_17.xml	(date 1611797483914)
++++ .idea/libraries/Maven__org_codehaus_mojo_animal_sniffer_annotations_1_17.xml	(date 1611797483914)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.codehaus.mojo:animal-sniffer-annotations:1.17">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/codehaus/mojo/animal-sniffer-annotations/1.17/animal-sniffer-annotations-1.17.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/codehaus/mojo/animal-sniffer-annotations/1.17/animal-sniffer-annotations-1.17-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/codehaus/mojo/animal-sniffer-annotations/1.17/animal-sniffer-annotations-1.17-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_hibernate_validator_hibernate_validator_6_0_18_Final.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_hibernate_validator_hibernate_validator_6_0_18_Final.xml	(date 1611797483922)
++++ .idea/libraries/Maven__org_hibernate_validator_hibernate_validator_6_0_18_Final.xml	(date 1611797483922)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.hibernate.validator:hibernate-validator:6.0.18.Final">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/hibernate/validator/hibernate-validator/6.0.18.Final/hibernate-validator-6.0.18.Final.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/hibernate/validator/hibernate-validator/6.0.18.Final/hibernate-validator-6.0.18.Final-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/hibernate/validator/hibernate-validator/6.0.18.Final/hibernate-validator-6.0.18.Final-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_jboss_logging_jboss_logging_3_4_1_Final.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_jboss_logging_jboss_logging_3_4_1_Final.xml	(date 1611797483926)
++++ .idea/libraries/Maven__org_jboss_logging_jboss_logging_3_4_1_Final.xml	(date 1611797483926)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.jboss.logging:jboss-logging:3.4.1.Final">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/jboss/logging/jboss-logging/3.4.1.Final/jboss-logging-3.4.1.Final.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/jboss/logging/jboss-logging/3.4.1.Final/jboss-logging-3.4.1.Final-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/jboss/logging/jboss-logging/3.4.1.Final/jboss-logging-3.4.1.Final-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_kurento_kms_api_core_6_15_0.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_kurento_kms_api_core_6_15_0.xml	(date 1611797483934)
++++ .idea/libraries/Maven__org_kurento_kms_api_core_6_15_0.xml	(date 1611797483934)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.kurento:kms-api-core:6.15.0">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kms-api-core/6.15.0/kms-api-core-6.15.0.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kms-api-core/6.15.0/kms-api-core-6.15.0-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kms-api-core/6.15.0/kms-api-core-6.15.0-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_kurento_kms_api_elements_6_15_0.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_kurento_kms_api_elements_6_15_0.xml	(date 1611797483938)
++++ .idea/libraries/Maven__org_kurento_kms_api_elements_6_15_0.xml	(date 1611797483938)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.kurento:kms-api-elements:6.15.0">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kms-api-elements/6.15.0/kms-api-elements-6.15.0.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kms-api-elements/6.15.0/kms-api-elements-6.15.0-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/kurento/kms-api-elements/6.15.0/kms-api-elements-6.15.0-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_spring_beans_5_2_3_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_spring_beans_5_2_3_RELEASE.xml	(date 1611797484038)
++++ .idea/libraries/Maven__org_springframework_spring_beans_5_2_3_RELEASE.xml	(date 1611797484038)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework:spring-beans:5.2.3.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-beans/5.2.3.RELEASE/spring-beans-5.2.3.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-beans/5.2.3.RELEASE/spring-beans-5.2.3.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-beans/5.2.3.RELEASE/spring-beans-5.2.3.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_spring_context_5_2_3_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_spring_context_5_2_3_RELEASE.xml	(date 1611797484042)
++++ .idea/libraries/Maven__org_springframework_spring_context_5_2_3_RELEASE.xml	(date 1611797484042)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework:spring-context:5.2.3.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-context/5.2.3.RELEASE/spring-context-5.2.3.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-context/5.2.3.RELEASE/spring-context-5.2.3.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-context/5.2.3.RELEASE/spring-context-5.2.3.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_spring_core_5_2_3_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_spring_core_5_2_3_RELEASE.xml	(date 1611797484050)
++++ .idea/libraries/Maven__org_springframework_spring_core_5_2_3_RELEASE.xml	(date 1611797484050)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework:spring-core:5.2.3.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-core/5.2.3.RELEASE/spring-core-5.2.3.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-core/5.2.3.RELEASE/spring-core-5.2.3.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-core/5.2.3.RELEASE/spring-core-5.2.3.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_spring_expression_5_2_3_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_spring_expression_5_2_3_RELEASE.xml	(date 1611797484054)
++++ .idea/libraries/Maven__org_springframework_spring_expression_5_2_3_RELEASE.xml	(date 1611797484054)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework:spring-expression:5.2.3.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-expression/5.2.3.RELEASE/spring-expression-5.2.3.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-expression/5.2.3.RELEASE/spring-expression-5.2.3.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-expression/5.2.3.RELEASE/spring-expression-5.2.3.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_spring_jcl_5_2_3_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_spring_jcl_5_2_3_RELEASE.xml	(date 1611797484058)
++++ .idea/libraries/Maven__org_springframework_spring_jcl_5_2_3_RELEASE.xml	(date 1611797484058)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework:spring-jcl:5.2.3.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-jcl/5.2.3.RELEASE/spring-jcl-5.2.3.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-jcl/5.2.3.RELEASE/spring-jcl-5.2.3.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-jcl/5.2.3.RELEASE/spring-jcl-5.2.3.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_spring_web_5_2_3_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_spring_web_5_2_3_RELEASE.xml	(date 1611797484066)
++++ .idea/libraries/Maven__org_springframework_spring_web_5_2_3_RELEASE.xml	(date 1611797484066)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework:spring-web:5.2.3.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-web/5.2.3.RELEASE/spring-web-5.2.3.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-web/5.2.3.RELEASE/spring-web-5.2.3.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-web/5.2.3.RELEASE/spring-web-5.2.3.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_spring_webmvc_5_2_3_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_spring_webmvc_5_2_3_RELEASE.xml	(date 1611797484070)
++++ .idea/libraries/Maven__org_springframework_spring_webmvc_5_2_3_RELEASE.xml	(date 1611797484070)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework:spring-webmvc:5.2.3.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-webmvc/5.2.3.RELEASE/spring-webmvc-5.2.3.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-webmvc/5.2.3.RELEASE/spring-webmvc-5.2.3.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-webmvc/5.2.3.RELEASE/spring-webmvc-5.2.3.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_spring_websocket_5_2_3_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_spring_websocket_5_2_3_RELEASE.xml	(date 1611797484074)
++++ .idea/libraries/Maven__org_springframework_spring_websocket_5_2_3_RELEASE.xml	(date 1611797484074)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework:spring-websocket:5.2.3.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-websocket/5.2.3.RELEASE/spring-websocket-5.2.3.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-websocket/5.2.3.RELEASE/spring-websocket-5.2.3.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-websocket/5.2.3.RELEASE/spring-websocket-5.2.3.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_boot_spring_boot_autoconfigure_2_2_4_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_boot_spring_boot_autoconfigure_2_2_4_RELEASE.xml	(date 1611797483990)
++++ .idea/libraries/Maven__org_springframework_boot_spring_boot_autoconfigure_2_2_4_RELEASE.xml	(date 1611797483990)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework.boot:spring-boot-autoconfigure:2.2.4.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-autoconfigure/2.2.4.RELEASE/spring-boot-autoconfigure-2.2.4.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-autoconfigure/2.2.4.RELEASE/spring-boot-autoconfigure-2.2.4.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-autoconfigure/2.2.4.RELEASE/spring-boot-autoconfigure-2.2.4.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_2_2_4_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_2_2_4_RELEASE.xml	(date 1611797483994)
++++ .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_2_2_4_RELEASE.xml	(date 1611797483994)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework.boot:spring-boot-starter:2.2.4.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter/2.2.4.RELEASE/spring-boot-starter-2.2.4.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter/2.2.4.RELEASE/spring-boot-starter-2.2.4.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter/2.2.4.RELEASE/spring-boot-starter-2.2.4.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_json_2_2_4_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_json_2_2_4_RELEASE.xml	(date 1611797484002)
++++ .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_json_2_2_4_RELEASE.xml	(date 1611797484002)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework.boot:spring-boot-starter-json:2.2.4.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-json/2.2.4.RELEASE/spring-boot-starter-json-2.2.4.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-json/2.2.4.RELEASE/spring-boot-starter-json-2.2.4.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-json/2.2.4.RELEASE/spring-boot-starter-json-2.2.4.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_logging_2_2_4_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_logging_2_2_4_RELEASE.xml	(date 1611797484006)
++++ .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_logging_2_2_4_RELEASE.xml	(date 1611797484006)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework.boot:spring-boot-starter-logging:2.2.4.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-logging/2.2.4.RELEASE/spring-boot-starter-logging-2.2.4.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-logging/2.2.4.RELEASE/spring-boot-starter-logging-2.2.4.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-logging/2.2.4.RELEASE/spring-boot-starter-logging-2.2.4.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_tomcat_2_2_4_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_tomcat_2_2_4_RELEASE.xml	(date 1611797484014)
++++ .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_tomcat_2_2_4_RELEASE.xml	(date 1611797484014)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework.boot:spring-boot-starter-tomcat:2.2.4.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-tomcat/2.2.4.RELEASE/spring-boot-starter-tomcat-2.2.4.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-tomcat/2.2.4.RELEASE/spring-boot-starter-tomcat-2.2.4.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-tomcat/2.2.4.RELEASE/spring-boot-starter-tomcat-2.2.4.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_validation_2_2_4_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_validation_2_2_4_RELEASE.xml	(date 1611797484018)
++++ .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_validation_2_2_4_RELEASE.xml	(date 1611797484018)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework.boot:spring-boot-starter-validation:2.2.4.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-validation/2.2.4.RELEASE/spring-boot-starter-validation-2.2.4.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-validation/2.2.4.RELEASE/spring-boot-starter-validation-2.2.4.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-validation/2.2.4.RELEASE/spring-boot-starter-validation-2.2.4.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_web_2_2_4_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_web_2_2_4_RELEASE.xml	(date 1611797484026)
++++ .idea/libraries/Maven__org_springframework_boot_spring_boot_starter_web_2_2_4_RELEASE.xml	(date 1611797484026)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework.boot:spring-boot-starter-web:2.2.4.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-web/2.2.4.RELEASE/spring-boot-starter-web-2.2.4.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-web/2.2.4.RELEASE/spring-boot-starter-web-2.2.4.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-starter-web/2.2.4.RELEASE/spring-boot-starter-web-2.2.4.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_springframework_spring_aop_5_2_3_RELEASE.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_springframework_spring_aop_5_2_3_RELEASE.xml	(date 1611797484030)
++++ .idea/libraries/Maven__org_springframework_spring_aop_5_2_3_RELEASE.xml	(date 1611797484030)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.springframework:spring-aop:5.2.3.RELEASE">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-aop/5.2.3.RELEASE/spring-aop-5.2.3.RELEASE.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-aop/5.2.3.RELEASE/spring-aop-5.2.3.RELEASE-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/springframework/spring-aop/5.2.3.RELEASE/spring-aop-5.2.3.RELEASE-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_webjars_webjars_locator_core_0_41.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_webjars_webjars_locator_core_0_41.xml	(date 1611797484138)
++++ .idea/libraries/Maven__org_webjars_webjars_locator_core_0_41.xml	(date 1611797484138)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.webjars:webjars-locator-core:0.41">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/webjars-locator-core/0.41/webjars-locator-core-0.41.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/webjars-locator-core/0.41/webjars-locator-core-0.41-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/webjars-locator-core/0.41/webjars-locator-core-0.41-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_yaml_snakeyaml_1_25.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_yaml_snakeyaml_1_25.xml	(date 1611797484142)
++++ .idea/libraries/Maven__org_yaml_snakeyaml_1_25.xml	(date 1611797484142)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.yaml:snakeyaml:1.25">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/yaml/snakeyaml/1.25/snakeyaml-1.25.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/yaml/snakeyaml/1.25/snakeyaml-1.25-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/yaml/snakeyaml/1.25/snakeyaml-1.25-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_webjars_bower_bootstrap_3_3_6.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_webjars_bower_bootstrap_3_3_6.xml	(date 1611797484082)
++++ .idea/libraries/Maven__org_webjars_bower_bootstrap_3_3_6.xml	(date 1611797484082)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.webjars.bower:bootstrap:3.3.6">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/bootstrap/3.3.6/bootstrap-3.3.6.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/bootstrap/3.3.6/bootstrap-3.3.6-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/bootstrap/3.3.6/bootstrap-3.3.6-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_webjars_bower_demo_console_1_5_1.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_webjars_bower_demo_console_1_5_1.xml	(date 1611797484086)
++++ .idea/libraries/Maven__org_webjars_bower_demo_console_1_5_1.xml	(date 1611797484086)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.webjars.bower:demo-console:1.5.1">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/demo-console/1.5.1/demo-console-1.5.1.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/demo-console/1.5.1/demo-console-1.5.1-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/demo-console/1.5.1/demo-console-1.5.1-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_webjars_bower_ekko_lightbox_4_0_2.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_webjars_bower_ekko_lightbox_4_0_2.xml	(date 1611797484094)
++++ .idea/libraries/Maven__org_webjars_bower_ekko_lightbox_4_0_2.xml	(date 1611797484094)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.webjars.bower:ekko-lightbox:4.0.2">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/ekko-lightbox/4.0.2/ekko-lightbox-4.0.2.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/ekko-lightbox/4.0.2/ekko-lightbox-4.0.2-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/ekko-lightbox/4.0.2/ekko-lightbox-4.0.2-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_webjars_bower_jquery_1_12_3.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_webjars_bower_jquery_1_12_3.xml	(date 1611797484102)
++++ .idea/libraries/Maven__org_webjars_bower_jquery_1_12_3.xml	(date 1611797484102)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.webjars.bower:jquery:1.12.3">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/jquery/1.12.3/jquery-1.12.3.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/jquery/1.12.3/jquery-1.12.3-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/jquery/1.12.3/jquery-1.12.3-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_webjars_bower_webrtc_adapter_7_4_0.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_webjars_bower_webrtc_adapter_7_4_0.xml	(date 1611797484114)
++++ .idea/libraries/Maven__org_webjars_bower_webrtc_adapter_7_4_0.xml	(date 1611797484114)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.webjars.bower:webrtc-adapter:7.4.0">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/webrtc-adapter/7.4.0/webrtc-adapter-7.4.0.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/webrtc-adapter/7.4.0/webrtc-adapter-7.4.0-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/bower/webrtc-adapter/7.4.0/webrtc-adapter-7.4.0-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/workspace.xml	(date 1611806038220)
++++ .idea/workspace.xml	(date 1611806038220)
+@@ -0,0 +1,274 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="AutoImportSettings">
++    <option name="autoReloadType" value="SELECTIVE" />
++  </component>
++  <component name="BranchesTreeState">
++    <expand>
++      <path>
++        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
++        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
++      </path>
++      <path>
++        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
++        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
++      </path>
++      <path>
++        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
++        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
++        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
++      </path>
++    </expand>
++    <select />
++  </component>
++  <component name="ChangeListManager">
++    <list default="true" id="0110a3bd-ca5d-49bf-b5f1-de84a8b015da" name="Default Changelist" comment="">
++      <change afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/jarRepositories.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/kurento-one2one-call-advanced.iml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__ch_qos_logback_logback_classic_1_2_3.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__ch_qos_logback_logback_core_1_2_3.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_fasterxml_classmate_1_5_1.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_fasterxml_jackson_core_jackson_annotations_2_10_2.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_fasterxml_jackson_core_jackson_core_2_10_2.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_fasterxml_jackson_core_jackson_databind_2_10_2.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_fasterxml_jackson_datatype_jackson_datatype_jdk8_2_10_2.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_fasterxml_jackson_datatype_jackson_datatype_jsr310_2_10_2.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_fasterxml_jackson_module_jackson_module_parameter_names_2_10_2.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_google_code_findbugs_jsr305_3_0_2.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_google_code_gson_gson_2_8_5.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_google_errorprone_error_prone_annotations_2_2_0.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_google_guava_failureaccess_1_0_1.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_google_guava_guava_27_1_jre.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_google_guava_listenablefuture_9999_0_empty_to_avoid_conflict_with_guava.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_google_j2objc_j2objc_annotations_1_1.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__com_thoughtworks_paranamer_paranamer_2_8.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__commons_codec_commons_codec_1_13.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__commons_logging_commons_logging_1_2.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__io_github_classgraph_classgraph_4_8_44.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__io_netty_netty_buffer_4_1_50_Final.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__io_netty_netty_codec_4_1_50_Final.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__io_netty_netty_codec_http_4_1_50_Final.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__io_netty_netty_codec_socks_4_1_45_Final.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__io_netty_netty_common_4_1_50_Final.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__io_netty_netty_handler_4_1_50_Final.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__io_netty_netty_handler_proxy_4_1_50_Final.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__io_netty_netty_resolver_4_1_45_Final.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__io_netty_netty_transport_4_1_50_Final.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__jakarta_annotation_jakarta_annotation_api_1_3_5.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__jakarta_validation_jakarta_validation_api_2_0_2.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__javax_inject_javax_inject_1.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_apache_httpcomponents_fluent_hc_4_5_8.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_apache_httpcomponents_httpclient_4_5_8.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_apache_httpcomponents_httpcore_4_4_11.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_apache_logging_log4j_log4j_api_2_12_1.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_apache_logging_log4j_log4j_to_slf4j_2_12_1.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_core_9_0_30.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_el_9_0_30.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_websocket_9_0_30.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_checkerframework_checker_qual_2_5_2.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_codehaus_mojo_animal_sniffer_annotations_1_17.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_hibernate_validator_hibernate_validator_6_0_18_Final.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_jboss_logging_jboss_logging_3_4_1_Final.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_kurento_kms_api_core_6_15_0.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_kurento_kms_api_elements_6_15_0.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_kurento_kms_api_filters_6_15_0.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_kurento_kurento_client_6_15_0.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_kurento_kurento_commons_6_15_0.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_kurento_kurento_jsonrpc_client_6_15_0.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_kurento_kurento_utils_js_6_15_0.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_slf4j_jul_to_slf4j_1_7_30.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_slf4j_slf4j_api_1_7_26.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_boot_spring_boot_2_2_4_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_boot_spring_boot_autoconfigure_2_2_4_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_boot_spring_boot_starter_2_2_4_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_boot_spring_boot_starter_json_2_2_4_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_boot_spring_boot_starter_logging_2_2_4_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_boot_spring_boot_starter_tomcat_2_2_4_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_boot_spring_boot_starter_validation_2_2_4_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_boot_spring_boot_starter_web_2_2_4_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_spring_aop_5_2_3_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_spring_beans_5_2_3_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_spring_context_5_2_3_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_spring_core_5_2_3_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_spring_expression_5_2_3_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_spring_jcl_5_2_3_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_spring_web_5_2_3_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_spring_webmvc_5_2_3_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_springframework_spring_websocket_5_2_3_RELEASE.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_webjars_bower_bootstrap_3_3_6.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_webjars_bower_demo_console_1_5_1.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_webjars_bower_ekko_lightbox_4_0_2.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_webjars_bower_jquery_1_12_3.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_webjars_bower_webrtc_adapter_7_4_0.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_webjars_draggabilly_2_1_0.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_webjars_npm_angular__http_2_4_10.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_webjars_webjars_locator_0_36.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_webjars_webjars_locator_core_0_41.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/libraries/Maven__org_yaml_snakeyaml_1_25.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/org/kurento/tutorial/one2onecalladv/CallMediaPipeline.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/kurento/tutorial/one2onecalladv/CallMediaPipeline.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.properties" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/resources/static/js/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/static/js/index.js" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/../kurento-one2one-call/src/main/java/org/kurento/tutorial/one2onecall/CallMediaPipeline.java" beforeDir="false" afterPath="$PROJECT_DIR$/../kurento-one2one-call/src/main/java/org/kurento/tutorial/one2onecall/CallMediaPipeline.java" afterDir="false" />
++    </list>
++    <option name="SHOW_DIALOG" value="false" />
++    <option name="HIGHLIGHT_CONFLICTS" value="true" />
++    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
++    <option name="LAST_RESOLUTION" value="IGNORE" />
++  </component>
++  <component name="Git.Settings">
++    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
++    <option name="RESET_MODE" value="HARD" />
++  </component>
++  <component name="MavenImportPreferences">
++    <option name="generalSettings">
++      <MavenGeneralSettings>
++        <option name="mavenHome" value="$APPLICATION_HOME_DIR$/plugins/maven/lib/maven3" />
++      </MavenGeneralSettings>
++    </option>
++  </component>
++  <component name="ProjectId" id="1neHlIOEYeX3cwQXVNcf2JMfok9" />
++  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
++  <component name="ProjectViewState">
++    <option name="hideEmptyMiddlePackages" value="true" />
++    <option name="showLibraryContents" value="true" />
++  </component>
++  <component name="PropertiesComponent">
++    <property name="RequestMappingsPanelOrder0" value="0" />
++    <property name="RequestMappingsPanelOrder1" value="1" />
++    <property name="RequestMappingsPanelWidth0" value="75" />
++    <property name="RequestMappingsPanelWidth1" value="75" />
++    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
++    <property name="WebServerToolWindowFactoryState" value="false" />
++    <property name="aspect.path.notification.shown" value="true" />
++    <property name="last_opened_file_path" value="$USER_HOME$/Worspace/ITech/video/kurento/kurento-java/kurento-client" />
++    <property name="project.structure.last.edited" value="Project" />
++    <property name="project.structure.proportion" value="0.0" />
++    <property name="project.structure.side.proportion" value="0.0" />
++  </component>
++  <component name="RunManager">
++    <configuration name="One2OneCallAdvApp" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
++      <module name="kurento-one2one-call-advanced" />
++      <option name="SPRING_BOOT_MAIN_CLASS" value="org.kurento.tutorial.one2onecalladv.One2OneCallAdvApp" />
++      <method v="2">
++        <option name="Make" enabled="true" />
++      </method>
++    </configuration>
++  </component>
++  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
++  <component name="TaskManager">
++    <task active="true" id="Default" summary="Default task">
++      <changelist id="0110a3bd-ca5d-49bf-b5f1-de84a8b015da" name="Default Changelist" comment="" />
++      <created>1611743786567</created>
++      <option name="number" value="Default" />
++      <option name="presentableId" value="Default" />
++      <updated>1611743786567</updated>
++      <workItem from="1611743787607" duration="398000" />
++      <workItem from="1611754430740" duration="1186000" />
++      <workItem from="1611755771471" duration="2000" />
++      <workItem from="1611797070084" duration="145000" />
++      <workItem from="1611797221706" duration="146000" />
++      <workItem from="1611797379915" duration="63000" />
++      <workItem from="1611797459437" duration="6984000" />
++      <workItem from="1611805421016" duration="617000" />
++    </task>
++    <servers />
++  </component>
++  <component name="TypeScriptGeneratedFilesManager">
++    <option name="version" value="3" />
++  </component>
++  <component name="Vcs.Log.Tabs.Properties">
++    <option name="TAB_STATES">
++      <map>
++        <entry key="MAIN">
++          <value>
++            <State />
++          </value>
++        </entry>
++      </map>
++    </option>
++    <option name="oldMeFiltersMigrated" value="true" />
++  </component>
++  <component name="WindowStateProjectService">
++    <state x="776" y="310" width="424" height="484" key="FileChooserDialogImpl" timestamp="1611801137130">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state x="776" y="310" width="424" height="484" key="FileChooserDialogImpl/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611801137130" />
++    <state width="1807" height="541" key="GridCell.Tab.0.bottom" timestamp="1611805641462">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state width="1807" height="257" key="GridCell.Tab.0.bottom/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611805225742" />
++    <state width="1807" height="541" key="GridCell.Tab.0.bottom/67.27.1853.1053@67.27.1853.1053" timestamp="1611805641462" />
++    <state width="1807" height="278" key="GridCell.Tab.0.bottom/67.27.3773.1053@67.27.3773.1053" timestamp="1611754124330" />
++    <state width="1807" height="541" key="GridCell.Tab.0.center" timestamp="1611805641461">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state width="1807" height="257" key="GridCell.Tab.0.center/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611805225742" />
++    <state width="1807" height="541" key="GridCell.Tab.0.center/67.27.1853.1053@67.27.1853.1053" timestamp="1611805641461" />
++    <state width="1807" height="278" key="GridCell.Tab.0.center/67.27.3773.1053@67.27.3773.1053" timestamp="1611754124328" />
++    <state width="1807" height="541" key="GridCell.Tab.0.left" timestamp="1611805641461">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state width="1807" height="257" key="GridCell.Tab.0.left/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611805225742" />
++    <state width="1807" height="541" key="GridCell.Tab.0.left/67.27.1853.1053@67.27.1853.1053" timestamp="1611805641461" />
++    <state width="1807" height="278" key="GridCell.Tab.0.left/67.27.3773.1053@67.27.3773.1053" timestamp="1611754124327" />
++    <state width="1807" height="541" key="GridCell.Tab.0.right" timestamp="1611805641462">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state width="1807" height="257" key="GridCell.Tab.0.right/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611805225742" />
++    <state width="1807" height="541" key="GridCell.Tab.0.right/67.27.1853.1053@67.27.1853.1053" timestamp="1611805641462" />
++    <state width="1807" height="278" key="GridCell.Tab.0.right/67.27.3773.1053@67.27.3773.1053" timestamp="1611754124329" />
++    <state width="1807" height="541" key="GridCell.Tab.1.bottom" timestamp="1611805641463">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state width="1807" height="541" key="GridCell.Tab.1.bottom/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611805225734" />
++    <state width="1807" height="541" key="GridCell.Tab.1.bottom/67.27.1853.1053@67.27.1853.1053" timestamp="1611805641463" />
++    <state width="1807" height="278" key="GridCell.Tab.1.bottom/67.27.3773.1053@67.27.3773.1053" timestamp="1611754124332" />
++    <state width="1807" height="541" key="GridCell.Tab.1.center" timestamp="1611805641462">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state width="1807" height="541" key="GridCell.Tab.1.center/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611805225734" />
++    <state width="1807" height="541" key="GridCell.Tab.1.center/67.27.1853.1053@67.27.1853.1053" timestamp="1611805641462" />
++    <state width="1807" height="278" key="GridCell.Tab.1.center/67.27.3773.1053@67.27.3773.1053" timestamp="1611754124331" />
++    <state width="1807" height="541" key="GridCell.Tab.1.left" timestamp="1611805641462">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state width="1807" height="541" key="GridCell.Tab.1.left/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611805225734" />
++    <state width="1807" height="541" key="GridCell.Tab.1.left/67.27.1853.1053@67.27.1853.1053" timestamp="1611805641462" />
++    <state width="1807" height="278" key="GridCell.Tab.1.left/67.27.3773.1053@67.27.3773.1053" timestamp="1611754124330" />
++    <state width="1807" height="541" key="GridCell.Tab.1.right" timestamp="1611805641462">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state width="1807" height="541" key="GridCell.Tab.1.right/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611805225734" />
++    <state width="1807" height="541" key="GridCell.Tab.1.right/67.27.1853.1053@67.27.1853.1053" timestamp="1611805641462" />
++    <state width="1807" height="278" key="GridCell.Tab.1.right/67.27.3773.1053@67.27.3773.1053" timestamp="1611754124331" />
++    <state x="476" y="130" width="1024" height="845" key="SettingsEditor" timestamp="1611797426328">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state x="476" y="130" width="1024" height="845" key="SettingsEditor/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611797426328" />
++    <state x="774" y="467" width="428" height="170" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1611797121781">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state x="774" y="467" width="428" height="170" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611797121781" />
++    <state x="684" y="291" width="618" height="522" key="find.popup" timestamp="1611804566868">
++      <screen x="67" y="27" width="1853" height="1053" />
++    </state>
++    <state x="684" y="291" width="618" height="522" key="find.popup/67.27.1853.1053/1920.0.1920.1080@67.27.1853.1053" timestamp="1611804566868" />
++  </component>
++  <component name="XDebuggerManager">
++    <breakpoint-manager>
++      <breakpoints>
++        <line-breakpoint enabled="true" type="java-line">
++          <url>file://$PROJECT_DIR$/src/main/java/org/kurento/tutorial/one2onecalladv/CallHandler.java</url>
++          <line>282</line>
++          <option name="timeStamp" value="1" />
++        </line-breakpoint>
++      </breakpoints>
++    </breakpoint-manager>
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_webjars_draggabilly_2_1_0.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_webjars_draggabilly_2_1_0.xml	(date 1611797484122)
++++ .idea/libraries/Maven__org_webjars_draggabilly_2_1_0.xml	(date 1611797484122)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.webjars:draggabilly:2.1.0">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/draggabilly/2.1.0/draggabilly-2.1.0.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/draggabilly/2.1.0/draggabilly-2.1.0-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/draggabilly/2.1.0/draggabilly-2.1.0-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_webjars_npm_angular__http_2_4_10.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_webjars_npm_angular__http_2_4_10.xml	(date 1611797484126)
++++ .idea/libraries/Maven__org_webjars_npm_angular__http_2_4_10.xml	(date 1611797484126)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.webjars.npm:angular__http:2.4.10">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/npm/angular__http/2.4.10/angular__http-2.4.10.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/npm/angular__http/2.4.10/angular__http-2.4.10-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/npm/angular__http/2.4.10/angular__http-2.4.10-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_webjars_webjars_locator_0_36.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_webjars_webjars_locator_0_36.xml	(date 1611797484134)
++++ .idea/libraries/Maven__org_webjars_webjars_locator_0_36.xml	(date 1611797484134)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.webjars:webjars-locator:0.36">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/webjars-locator/0.36/webjars-locator-0.36.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/webjars-locator/0.36/webjars-locator-0.36-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/webjars/webjars-locator/0.36/webjars-locator-0.36-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/kurento-one2one-call-advanced.iml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/kurento-one2one-call-advanced.iml	(date 1611797483578)
++++ .idea/kurento-one2one-call-advanced.iml	(date 1611797483578)
+@@ -0,0 +1,104 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<module org.jetbrains.idea.maven.project.MavenProjectsManager.isMavenModule="true" type="JAVA_MODULE" version="4">
++  <component name="FacetManager">
++    <facet type="Spring" name="Spring">
++      <configuration />
++    </facet>
++    <facet type="web" name="Web">
++      <configuration>
++        <webroots />
++      </configuration>
++    </facet>
++  </component>
++  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_8">
++    <output url="file://$MODULE_DIR$/target/classes" />
++    <output-test url="file://$MODULE_DIR$/target/test-classes" />
++    <content url="file://$MODULE_DIR$">
++      <sourceFolder url="file://$MODULE_DIR$/src/main/java" isTestSource="false" />
++      <sourceFolder url="file://$MODULE_DIR$/src/main/resources" type="java-resource" />
++      <excludeFolder url="file://$MODULE_DIR$/target" />
++    </content>
++    <orderEntry type="inheritedJdk" />
++    <orderEntry type="sourceFolder" forTests="false" />
++    <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot-starter-web:2.2.4.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot-starter:2.2.4.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot:2.2.4.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot-autoconfigure:2.2.4.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot-starter-logging:2.2.4.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: ch.qos.logback:logback-classic:1.2.3" level="project" />
++    <orderEntry type="library" name="Maven: ch.qos.logback:logback-core:1.2.3" level="project" />
++    <orderEntry type="library" name="Maven: org.apache.logging.log4j:log4j-to-slf4j:2.12.1" level="project" />
++    <orderEntry type="library" name="Maven: org.apache.logging.log4j:log4j-api:2.12.1" level="project" />
++    <orderEntry type="library" name="Maven: org.slf4j:jul-to-slf4j:1.7.30" level="project" />
++    <orderEntry type="library" name="Maven: jakarta.annotation:jakarta.annotation-api:1.3.5" level="project" />
++    <orderEntry type="library" scope="RUNTIME" name="Maven: org.yaml:snakeyaml:1.25" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot-starter-json:2.2.4.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.10.2" level="project" />
++    <orderEntry type="library" name="Maven: com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.10.2" level="project" />
++    <orderEntry type="library" name="Maven: com.fasterxml.jackson.module:jackson-module-parameter-names:2.10.2" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot-starter-tomcat:2.2.4.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.apache.tomcat.embed:tomcat-embed-core:9.0.30" level="project" />
++    <orderEntry type="library" name="Maven: org.apache.tomcat.embed:tomcat-embed-el:9.0.30" level="project" />
++    <orderEntry type="library" name="Maven: org.apache.tomcat.embed:tomcat-embed-websocket:9.0.30" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework.boot:spring-boot-starter-validation:2.2.4.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: jakarta.validation:jakarta.validation-api:2.0.2" level="project" />
++    <orderEntry type="library" name="Maven: org.hibernate.validator:hibernate-validator:6.0.18.Final" level="project" />
++    <orderEntry type="library" name="Maven: org.jboss.logging:jboss-logging:3.4.1.Final" level="project" />
++    <orderEntry type="library" name="Maven: com.fasterxml:classmate:1.5.1" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework:spring-web:5.2.3.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework:spring-beans:5.2.3.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework:spring-webmvc:5.2.3.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework:spring-aop:5.2.3.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework:spring-expression:5.2.3.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework:spring-websocket:5.2.3.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework:spring-context:5.2.3.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework:spring-core:5.2.3.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.springframework:spring-jcl:5.2.3.RELEASE" level="project" />
++    <orderEntry type="library" name="Maven: org.webjars:webjars-locator:0.36" level="project" />
++    <orderEntry type="library" name="Maven: org.webjars:webjars-locator-core:0.41" level="project" />
++    <orderEntry type="library" name="Maven: org.slf4j:slf4j-api:1.7.26" level="project" />
++    <orderEntry type="library" name="Maven: io.github.classgraph:classgraph:4.8.44" level="project" />
++    <orderEntry type="library" name="Maven: com.fasterxml.jackson.core:jackson-core:2.10.2" level="project" />
++    <orderEntry type="library" name="Maven: org.webjars.npm:angular__http:2.4.10" level="project" />
++    <orderEntry type="library" name="Maven: com.fasterxml.jackson.core:jackson-databind:2.10.2" level="project" />
++    <orderEntry type="library" name="Maven: com.fasterxml.jackson.core:jackson-annotations:2.10.2" level="project" />
++    <orderEntry type="library" name="Maven: org.webjars.bower:jquery:1.12.3" level="project" />
++    <orderEntry type="library" name="Maven: org.webjars.bower:bootstrap:3.3.6" level="project" />
++    <orderEntry type="library" name="Maven: org.webjars.bower:demo-console:1.5.1" level="project" />
++    <orderEntry type="library" name="Maven: org.webjars.bower:ekko-lightbox:4.0.2" level="project" />
++    <orderEntry type="library" name="Maven: org.webjars.bower:webrtc-adapter:7.4.0" level="project" />
++    <orderEntry type="library" name="Maven: org.webjars:draggabilly:2.1.0" level="project" />
++    <orderEntry type="library" name="Maven: org.kurento:kurento-client:6.15.0" level="project" />
++    <orderEntry type="library" name="Maven: org.kurento:kurento-jsonrpc-client:6.15.0" level="project" />
++    <orderEntry type="library" name="Maven: com.thoughtworks.paranamer:paranamer:2.8" level="project" />
++    <orderEntry type="library" name="Maven: javax.inject:javax.inject:1" level="project" />
++    <orderEntry type="library" name="Maven: org.kurento:kurento-commons:6.15.0" level="project" />
++    <orderEntry type="library" name="Maven: com.google.code.gson:gson:2.8.5" level="project" />
++    <orderEntry type="library" name="Maven: com.google.guava:guava:27.1-jre" level="project" />
++    <orderEntry type="library" name="Maven: com.google.guava:failureaccess:1.0.1" level="project" />
++    <orderEntry type="library" name="Maven: com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava" level="project" />
++    <orderEntry type="library" name="Maven: com.google.code.findbugs:jsr305:3.0.2" level="project" />
++    <orderEntry type="library" name="Maven: org.checkerframework:checker-qual:2.5.2" level="project" />
++    <orderEntry type="library" name="Maven: com.google.errorprone:error_prone_annotations:2.2.0" level="project" />
++    <orderEntry type="library" name="Maven: com.google.j2objc:j2objc-annotations:1.1" level="project" />
++    <orderEntry type="library" name="Maven: org.codehaus.mojo:animal-sniffer-annotations:1.17" level="project" />
++    <orderEntry type="library" name="Maven: org.apache.httpcomponents:httpclient:4.5.8" level="project" />
++    <orderEntry type="library" name="Maven: org.apache.httpcomponents:httpcore:4.4.11" level="project" />
++    <orderEntry type="library" name="Maven: commons-logging:commons-logging:1.2" level="project" />
++    <orderEntry type="library" name="Maven: commons-codec:commons-codec:1.13" level="project" />
++    <orderEntry type="library" name="Maven: org.apache.httpcomponents:fluent-hc:4.5.8" level="project" />
++    <orderEntry type="library" name="Maven: io.netty:netty-handler:4.1.50.Final" level="project" />
++    <orderEntry type="library" name="Maven: io.netty:netty-common:4.1.50.Final" level="project" />
++    <orderEntry type="library" name="Maven: io.netty:netty-resolver:4.1.45.Final" level="project" />
++    <orderEntry type="library" name="Maven: io.netty:netty-buffer:4.1.50.Final" level="project" />
++    <orderEntry type="library" name="Maven: io.netty:netty-codec:4.1.50.Final" level="project" />
++    <orderEntry type="library" name="Maven: io.netty:netty-transport:4.1.50.Final" level="project" />
++    <orderEntry type="library" name="Maven: io.netty:netty-handler-proxy:4.1.50.Final" level="project" />
++    <orderEntry type="library" name="Maven: io.netty:netty-codec-socks:4.1.45.Final" level="project" />
++    <orderEntry type="library" name="Maven: io.netty:netty-codec-http:4.1.50.Final" level="project" />
++    <orderEntry type="library" name="Maven: org.kurento:kms-api-core:6.15.0" level="project" />
++    <orderEntry type="library" name="Maven: org.kurento:kms-api-elements:6.15.0" level="project" />
++    <orderEntry type="library" name="Maven: org.kurento:kms-api-filters:6.15.0" level="project" />
++    <orderEntry type="library" name="Maven: org.kurento:kurento-utils-js:6.15.0" level="project" />
++  </component>
++</module>
+\ No newline at end of file
+Index: .idea/modules.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/modules.xml	(date 1611797391102)
++++ .idea/modules.xml	(date 1611797391102)
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="ProjectModuleManager">
++    <modules>
++      <module fileurl="file://$PROJECT_DIR$/.idea/kurento-one2one-call-advanced.iml" filepath="$PROJECT_DIR$/.idea/kurento-one2one-call-advanced.iml" />
++    </modules>
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/jarRepositories.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/jarRepositories.xml	(date 1611797483610)
++++ .idea/jarRepositories.xml	(date 1611797483610)
+@@ -0,0 +1,25 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="RemoteRepositoriesConfiguration">
++    <remote-repository>
++      <option name="id" value="central" />
++      <option name="name" value="Central Repository" />
++      <option name="url" value="https://repo.maven.apache.org/maven2" />
++    </remote-repository>
++    <remote-repository>
++      <option name="id" value="kurento-snapshots" />
++      <option name="name" value="Kurento Snapshots" />
++      <option name="url" value="https://maven.openvidu.io/repository/snapshots/" />
++    </remote-repository>
++    <remote-repository>
++      <option name="id" value="central" />
++      <option name="name" value="Maven Central repository" />
++      <option name="url" value="https://repo1.maven.org/maven2" />
++    </remote-repository>
++    <remote-repository>
++      <option name="id" value="jboss.community" />
++      <option name="name" value="JBoss Community repository" />
++      <option name="url" value="https://repository.jboss.org/nexus/content/repositories/public/" />
++    </remote-repository>
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/libraries/Maven__ch_qos_logback_logback_classic_1_2_3.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__ch_qos_logback_logback_classic_1_2_3.xml	(date 1611797483626)
++++ .idea/libraries/Maven__ch_qos_logback_logback_classic_1_2_3.xml	(date 1611797483626)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: ch.qos.logback:logback-classic:1.2.3">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/ch/qos/logback/logback-classic/1.2.3/logback-classic-1.2.3.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/ch/qos/logback/logback-classic/1.2.3/logback-classic-1.2.3-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/ch/qos/logback/logback-classic/1.2.3/logback-classic-1.2.3-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__ch_qos_logback_logback_core_1_2_3.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__ch_qos_logback_logback_core_1_2_3.xml	(date 1611797483638)
++++ .idea/libraries/Maven__ch_qos_logback_logback_core_1_2_3.xml	(date 1611797483638)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: ch.qos.logback:logback-core:1.2.3">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/ch/qos/logback/logback-core/1.2.3/logback-core-1.2.3.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/ch/qos/logback/logback-core/1.2.3/logback-core-1.2.3-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/ch/qos/logback/logback-core/1.2.3/logback-core-1.2.3-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_fasterxml_classmate_1_5_1.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_fasterxml_classmate_1_5_1.xml	(date 1611797483650)
++++ .idea/libraries/Maven__com_fasterxml_classmate_1_5_1.xml	(date 1611797483650)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.fasterxml:classmate:1.5.1">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/classmate/1.5.1/classmate-1.5.1.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/classmate/1.5.1/classmate-1.5.1-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/classmate/1.5.1/classmate-1.5.1-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_fasterxml_jackson_core_jackson_annotations_2_10_2.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_fasterxml_jackson_core_jackson_annotations_2_10_2.xml	(date 1611797483658)
++++ .idea/libraries/Maven__com_fasterxml_jackson_core_jackson_annotations_2_10_2.xml	(date 1611797483658)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.fasterxml.jackson.core:jackson-annotations:2.10.2">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-annotations/2.10.2/jackson-annotations-2.10.2.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-annotations/2.10.2/jackson-annotations-2.10.2-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-annotations/2.10.2/jackson-annotations-2.10.2-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_fasterxml_jackson_core_jackson_core_2_10_2.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_fasterxml_jackson_core_jackson_core_2_10_2.xml	(date 1611797483666)
++++ .idea/libraries/Maven__com_fasterxml_jackson_core_jackson_core_2_10_2.xml	(date 1611797483666)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.fasterxml.jackson.core:jackson-core:2.10.2">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-core/2.10.2/jackson-core-2.10.2.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-core/2.10.2/jackson-core-2.10.2-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-core/2.10.2/jackson-core-2.10.2-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_fasterxml_jackson_core_jackson_databind_2_10_2.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_fasterxml_jackson_core_jackson_databind_2_10_2.xml	(date 1611797483678)
++++ .idea/libraries/Maven__com_fasterxml_jackson_core_jackson_databind_2_10_2.xml	(date 1611797483678)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.fasterxml.jackson.core:jackson-databind:2.10.2">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-databind/2.10.2/jackson-databind-2.10.2.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-databind/2.10.2/jackson-databind-2.10.2-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-databind/2.10.2/jackson-databind-2.10.2-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/vcs.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/vcs.xml	(date 1611797391110)
++++ .idea/vcs.xml	(date 1611797391110)
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="VcsDirectoryMappings">
++    <mapping directory="$PROJECT_DIR$/.." vcs="Git" />
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/misc.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/misc.xml	(date 1611797483594)
++++ .idea/misc.xml	(date 1611797483594)
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="MavenProjectsManager">
++    <option name="originalFiles">
++      <list>
++        <option value="$PROJECT_DIR$/pom.xml" />
++      </list>
++    </option>
++  </component>
++  <component name="ProjectRootManager" version="2" languageLevel="JDK_1_8" default="false" project-jdk-name="1.8" project-jdk-type="JavaSDK" />
++</project>
+\ No newline at end of file
+Index: .idea/compiler.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/compiler.xml	(date 1611797483590)
++++ .idea/compiler.xml	(date 1611797483590)
+@@ -0,0 +1,21 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="CompilerConfiguration">
++    <annotationProcessing>
++      <profile name="Maven default annotation processors profile" enabled="true">
++        <sourceOutputDir name="target/generated-sources/annotations" />
++        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
++        <outputRelativeToContentRoot value="true" />
++        <module name="kurento-one2one-call-advanced" />
++      </profile>
++    </annotationProcessing>
++    <bytecodeTargetLevel>
++      <module name="kurento-one2one-call-advanced" target="1.8" />
++    </bytecodeTargetLevel>
++  </component>
++  <component name="JavacSettings">
++    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
++      <module name="kurento-one2one-call-advanced" options="-source 1.8 -target 1.8" />
++    </option>
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/encodings.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/encodings.xml	(date 1611797483602)
++++ .idea/encodings.xml	(date 1611797483602)
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="Encoding">
++    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
++    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_google_guava_listenablefuture_9999_0_empty_to_avoid_conflict_with_guava.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_google_guava_listenablefuture_9999_0_empty_to_avoid_conflict_with_guava.xml	(date 1611797483762)
++++ .idea/libraries/Maven__com_google_guava_listenablefuture_9999_0_empty_to_avoid_conflict_with_guava.xml	(date 1611797483762)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_google_j2objc_j2objc_annotations_1_1.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_google_j2objc_j2objc_annotations_1_1.xml	(date 1611797483766)
++++ .idea/libraries/Maven__com_google_j2objc_j2objc_annotations_1_1.xml	(date 1611797483766)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.google.j2objc:j2objc-annotations:1.1">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/j2objc/j2objc-annotations/1.1/j2objc-annotations-1.1.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/j2objc/j2objc-annotations/1.1/j2objc-annotations-1.1-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/j2objc/j2objc-annotations/1.1/j2objc-annotations-1.1-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_thoughtworks_paranamer_paranamer_2_8.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_thoughtworks_paranamer_paranamer_2_8.xml	(date 1611797483774)
++++ .idea/libraries/Maven__com_thoughtworks_paranamer_paranamer_2_8.xml	(date 1611797483774)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.thoughtworks.paranamer:paranamer:2.8">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/thoughtworks/paranamer/paranamer/2.8/paranamer-2.8.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/thoughtworks/paranamer/paranamer/2.8/paranamer-2.8-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/thoughtworks/paranamer/paranamer/2.8/paranamer-2.8-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__commons_codec_commons_codec_1_13.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__commons_codec_commons_codec_1_13.xml	(date 1611797483778)
++++ .idea/libraries/Maven__commons_codec_commons_codec_1_13.xml	(date 1611797483778)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: commons-codec:commons-codec:1.13">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/commons-codec/commons-codec/1.13/commons-codec-1.13.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/commons-codec/commons-codec/1.13/commons-codec-1.13-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/commons-codec/commons-codec/1.13/commons-codec-1.13-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__commons_logging_commons_logging_1_2.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__commons_logging_commons_logging_1_2.xml	(date 1611797483786)
++++ .idea/libraries/Maven__commons_logging_commons_logging_1_2.xml	(date 1611797483786)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: commons-logging:commons-logging:1.2">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/commons-logging/commons-logging/1.2/commons-logging-1.2.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/commons-logging/commons-logging/1.2/commons-logging-1.2-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/commons-logging/commons-logging/1.2/commons-logging-1.2-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__io_github_classgraph_classgraph_4_8_44.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__io_github_classgraph_classgraph_4_8_44.xml	(date 1611797483790)
++++ .idea/libraries/Maven__io_github_classgraph_classgraph_4_8_44.xml	(date 1611797483790)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: io.github.classgraph:classgraph:4.8.44">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/github/classgraph/classgraph/4.8.44/classgraph-4.8.44.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/io/github/classgraph/classgraph/4.8.44/classgraph-4.8.44-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/github/classgraph/classgraph/4.8.44/classgraph-4.8.44-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__io_netty_netty_buffer_4_1_50_Final.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__io_netty_netty_buffer_4_1_50_Final.xml	(date 1611797483798)
++++ .idea/libraries/Maven__io_netty_netty_buffer_4_1_50_Final.xml	(date 1611797483798)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: io.netty:netty-buffer:4.1.50.Final">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-buffer/4.1.50.Final/netty-buffer-4.1.50.Final.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-buffer/4.1.50.Final/netty-buffer-4.1.50.Final-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-buffer/4.1.50.Final/netty-buffer-4.1.50.Final-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__io_netty_netty_codec_4_1_50_Final.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__io_netty_netty_codec_4_1_50_Final.xml	(date 1611797483802)
++++ .idea/libraries/Maven__io_netty_netty_codec_4_1_50_Final.xml	(date 1611797483802)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: io.netty:netty-codec:4.1.50.Final">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-codec/4.1.50.Final/netty-codec-4.1.50.Final.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-codec/4.1.50.Final/netty-codec-4.1.50.Final-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-codec/4.1.50.Final/netty-codec-4.1.50.Final-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_fasterxml_jackson_datatype_jackson_datatype_jdk8_2_10_2.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_fasterxml_jackson_datatype_jackson_datatype_jdk8_2_10_2.xml	(date 1611797483686)
++++ .idea/libraries/Maven__com_fasterxml_jackson_datatype_jackson_datatype_jdk8_2_10_2.xml	(date 1611797483686)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.10.2">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/2.10.2/jackson-datatype-jdk8-2.10.2.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/2.10.2/jackson-datatype-jdk8-2.10.2-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/datatype/jackson-datatype-jdk8/2.10.2/jackson-datatype-jdk8-2.10.2-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_fasterxml_jackson_datatype_jackson_datatype_jsr310_2_10_2.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_fasterxml_jackson_datatype_jackson_datatype_jsr310_2_10_2.xml	(date 1611797483694)
++++ .idea/libraries/Maven__com_fasterxml_jackson_datatype_jackson_datatype_jsr310_2_10_2.xml	(date 1611797483694)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.10.2">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.10.2/jackson-datatype-jsr310-2.10.2.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.10.2/jackson-datatype-jsr310-2.10.2-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/datatype/jackson-datatype-jsr310/2.10.2/jackson-datatype-jsr310-2.10.2-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_fasterxml_jackson_module_jackson_module_parameter_names_2_10_2.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_fasterxml_jackson_module_jackson_module_parameter_names_2_10_2.xml	(date 1611797483702)
++++ .idea/libraries/Maven__com_fasterxml_jackson_module_jackson_module_parameter_names_2_10_2.xml	(date 1611797483702)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.fasterxml.jackson.module:jackson-module-parameter-names:2.10.2">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/module/jackson-module-parameter-names/2.10.2/jackson-module-parameter-names-2.10.2.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/module/jackson-module-parameter-names/2.10.2/jackson-module-parameter-names-2.10.2-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/module/jackson-module-parameter-names/2.10.2/jackson-module-parameter-names-2.10.2-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_google_code_findbugs_jsr305_3_0_2.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_google_code_findbugs_jsr305_3_0_2.xml	(date 1611797483714)
++++ .idea/libraries/Maven__com_google_code_findbugs_jsr305_3_0_2.xml	(date 1611797483714)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.google.code.findbugs:jsr305:3.0.2">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_google_code_gson_gson_2_8_5.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_google_code_gson_gson_2_8_5.xml	(date 1611797483726)
++++ .idea/libraries/Maven__com_google_code_gson_gson_2_8_5.xml	(date 1611797483726)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.google.code.gson:gson:2.8.5">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/code/gson/gson/2.8.5/gson-2.8.5.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/code/gson/gson/2.8.5/gson-2.8.5-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/code/gson/gson/2.8.5/gson-2.8.5-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_google_errorprone_error_prone_annotations_2_2_0.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_google_errorprone_error_prone_annotations_2_2_0.xml	(date 1611797483738)
++++ .idea/libraries/Maven__com_google_errorprone_error_prone_annotations_2_2_0.xml	(date 1611797483738)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.google.errorprone:error_prone_annotations:2.2.0">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/errorprone/error_prone_annotations/2.2.0/error_prone_annotations-2.2.0.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/errorprone/error_prone_annotations/2.2.0/error_prone_annotations-2.2.0-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/errorprone/error_prone_annotations/2.2.0/error_prone_annotations-2.2.0-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_google_guava_failureaccess_1_0_1.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_google_guava_failureaccess_1_0_1.xml	(date 1611797483746)
++++ .idea/libraries/Maven__com_google_guava_failureaccess_1_0_1.xml	(date 1611797483746)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.google.guava:failureaccess:1.0.1">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__com_google_guava_guava_27_1_jre.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__com_google_guava_guava_27_1_jre.xml	(date 1611797483754)
++++ .idea/libraries/Maven__com_google_guava_guava_27_1_jre.xml	(date 1611797483754)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: com.google.guava:guava:27.1-jre">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/guava/27.1-jre/guava-27.1-jre.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/guava/27.1-jre/guava-27.1-jre-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/guava/27.1-jre/guava-27.1-jre-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__jakarta_validation_jakarta_validation_api_2_0_2.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__jakarta_validation_jakarta_validation_api_2_0_2.xml	(date 1611797483854)
++++ .idea/libraries/Maven__jakarta_validation_jakarta_validation_api_2_0_2.xml	(date 1611797483854)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: jakarta.validation:jakarta.validation-api:2.0.2">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/jakarta/validation/jakarta.validation-api/2.0.2/jakarta.validation-api-2.0.2.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/jakarta/validation/jakarta.validation-api/2.0.2/jakarta.validation-api-2.0.2-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/jakarta/validation/jakarta.validation-api/2.0.2/jakarta.validation-api-2.0.2-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__javax_inject_javax_inject_1.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__javax_inject_javax_inject_1.xml	(date 1611797483858)
++++ .idea/libraries/Maven__javax_inject_javax_inject_1.xml	(date 1611797483858)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: javax.inject:javax.inject:1">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/javax/inject/javax.inject/1/javax.inject-1.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/javax/inject/javax.inject/1/javax.inject-1-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/javax/inject/javax.inject/1/javax.inject-1-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_apache_httpcomponents_fluent_hc_4_5_8.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_apache_httpcomponents_fluent_hc_4_5_8.xml	(date 1611797483862)
++++ .idea/libraries/Maven__org_apache_httpcomponents_fluent_hc_4_5_8.xml	(date 1611797483862)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.apache.httpcomponents:fluent-hc:4.5.8">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/httpcomponents/fluent-hc/4.5.8/fluent-hc-4.5.8.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/httpcomponents/fluent-hc/4.5.8/fluent-hc-4.5.8-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/httpcomponents/fluent-hc/4.5.8/fluent-hc-4.5.8-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_apache_httpcomponents_httpclient_4_5_8.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_apache_httpcomponents_httpclient_4_5_8.xml	(date 1611797483870)
++++ .idea/libraries/Maven__org_apache_httpcomponents_httpclient_4_5_8.xml	(date 1611797483870)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.apache.httpcomponents:httpclient:4.5.8">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/httpcomponents/httpclient/4.5.8/httpclient-4.5.8.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/httpcomponents/httpclient/4.5.8/httpclient-4.5.8-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/httpcomponents/httpclient/4.5.8/httpclient-4.5.8-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_apache_httpcomponents_httpcore_4_4_11.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_apache_httpcomponents_httpcore_4_4_11.xml	(date 1611797483874)
++++ .idea/libraries/Maven__org_apache_httpcomponents_httpcore_4_4_11.xml	(date 1611797483874)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.apache.httpcomponents:httpcore:4.4.11">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/httpcomponents/httpcore/4.4.11/httpcore-4.4.11.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/httpcomponents/httpcore/4.4.11/httpcore-4.4.11-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/httpcomponents/httpcore/4.4.11/httpcore-4.4.11-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_apache_logging_log4j_log4j_api_2_12_1.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_apache_logging_log4j_log4j_api_2_12_1.xml	(date 1611797483882)
++++ .idea/libraries/Maven__org_apache_logging_log4j_log4j_api_2_12_1.xml	(date 1611797483882)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.apache.logging.log4j:log4j-api:2.12.1">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/logging/log4j/log4j-api/2.12.1/log4j-api-2.12.1.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/logging/log4j/log4j-api/2.12.1/log4j-api-2.12.1-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/logging/log4j/log4j-api/2.12.1/log4j-api-2.12.1-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_apache_logging_log4j_log4j_to_slf4j_2_12_1.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_apache_logging_log4j_log4j_to_slf4j_2_12_1.xml	(date 1611797483886)
++++ .idea/libraries/Maven__org_apache_logging_log4j_log4j_to_slf4j_2_12_1.xml	(date 1611797483886)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.apache.logging.log4j:log4j-to-slf4j:2.12.1">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/logging/log4j/log4j-to-slf4j/2.12.1/log4j-to-slf4j-2.12.1.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/logging/log4j/log4j-to-slf4j/2.12.1/log4j-to-slf4j-2.12.1-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/logging/log4j/log4j-to-slf4j/2.12.1/log4j-to-slf4j-2.12.1-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_core_9_0_30.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_core_9_0_30.xml	(date 1611797483894)
++++ .idea/libraries/Maven__org_apache_tomcat_embed_tomcat_embed_core_9_0_30.xml	(date 1611797483894)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: org.apache.tomcat.embed:tomcat-embed-core:9.0.30">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/tomcat/embed/tomcat-embed-core/9.0.30/tomcat-embed-core-9.0.30.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/tomcat/embed/tomcat-embed-core/9.0.30/tomcat-embed-core-9.0.30-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/org/apache/tomcat/embed/tomcat-embed-core/9.0.30/tomcat-embed-core-9.0.30-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__io_netty_netty_codec_http_4_1_50_Final.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__io_netty_netty_codec_http_4_1_50_Final.xml	(date 1611797483806)
++++ .idea/libraries/Maven__io_netty_netty_codec_http_4_1_50_Final.xml	(date 1611797483806)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: io.netty:netty-codec-http:4.1.50.Final">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-codec-http/4.1.50.Final/netty-codec-http-4.1.50.Final.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-codec-http/4.1.50.Final/netty-codec-http-4.1.50.Final-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-codec-http/4.1.50.Final/netty-codec-http-4.1.50.Final-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__io_netty_netty_codec_socks_4_1_45_Final.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__io_netty_netty_codec_socks_4_1_45_Final.xml	(date 1611797483814)
++++ .idea/libraries/Maven__io_netty_netty_codec_socks_4_1_45_Final.xml	(date 1611797483814)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: io.netty:netty-codec-socks:4.1.45.Final">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-codec-socks/4.1.45.Final/netty-codec-socks-4.1.45.Final.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-codec-socks/4.1.45.Final/netty-codec-socks-4.1.45.Final-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-codec-socks/4.1.45.Final/netty-codec-socks-4.1.45.Final-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: ../kurento-one2one-call/src/main/java/org/kurento/tutorial/one2onecall/CallMediaPipeline.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>/*\n * (C) Copyright 2014 Kurento (http://kurento.org/)\n *\n * Licensed under the Apache License, Version 2.0 (the \"License\");\n * you may not use this file except in compliance with the License.\n * You may obtain a copy of the License at\n *\n *   http://www.apache.org/licenses/LICENSE-2.0\n *\n * Unless required by applicable law or agreed to in writing, software\n * distributed under the License is distributed on an \"AS IS\" BASIS,\n * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n * See the License for the specific language governing permissions and\n * limitations under the License.\n *\n */\n\npackage org.kurento.tutorial.one2onecall;\n\nimport org.kurento.client.KurentoClient;\nimport org.kurento.client.MediaPipeline;\nimport org.kurento.client.WebRtcEndpoint;\n\n/**\n * Media Pipeline (WebRTC endpoints, i.e. Kurento Media Elements) and connections for the 1 to 1\n * video communication.\n * \n * @author Boni Garcia (bgarcia@gsyc.es)\n * @author Micael Gallego (micael.gallego@gmail.com)\n * @since 4.3.1\n */\npublic class CallMediaPipeline {\n\n  private MediaPipeline pipeline;\n  private WebRtcEndpoint callerWebRtcEp;\n  private WebRtcEndpoint calleeWebRtcEp;\n\n  public CallMediaPipeline(KurentoClient kurento) {\n    try {\n      this.pipeline = kurento.createMediaPipeline();\n      this.callerWebRtcEp = new WebRtcEndpoint.Builder(pipeline).build();\n      this.calleeWebRtcEp = new WebRtcEndpoint.Builder(pipeline).build();\n\n      this.callerWebRtcEp.connect(this.calleeWebRtcEp);\n      this.calleeWebRtcEp.connect(this.callerWebRtcEp);\n    } catch (Throwable t) {\n      if (this.pipeline != null) {\n        pipeline.release();\n      }\n    }\n  }\n\n  public String generateSdpAnswerForCaller(String sdpOffer) {\n    return callerWebRtcEp.processOffer(sdpOffer);\n  }\n\n  public String generateSdpAnswerForCallee(String sdpOffer) {\n    return calleeWebRtcEp.processOffer(sdpOffer);\n  }\n\n  public void release() {\n    if (pipeline != null) {\n      pipeline.release();\n    }\n  }\n\n  public WebRtcEndpoint getCallerWebRtcEp() {\n    return callerWebRtcEp;\n  }\n\n  public WebRtcEndpoint getCalleeWebRtcEp() {\n    return calleeWebRtcEp;\n  }\n\n}\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- ../kurento-one2one-call/src/main/java/org/kurento/tutorial/one2onecall/CallMediaPipeline.java	(revision 785b09a357811f5ab7b5cbfc3eb82798b3177c7c)
++++ ../kurento-one2one-call/src/main/java/org/kurento/tutorial/one2onecall/CallMediaPipeline.java	(date 1611804566878)
+@@ -41,8 +41,7 @@
+       this.callerWebRtcEp = new WebRtcEndpoint.Builder(pipeline).build();
+       this.calleeWebRtcEp = new WebRtcEndpoint.Builder(pipeline).build();
+ 
+-      this.callerWebRtcEp.connect(this.calleeWebRtcEp);
+-      this.calleeWebRtcEp.connect(this.callerWebRtcEp);
++
+     } catch (Throwable t) {
+       if (this.pipeline != null) {
+         pipeline.release();
+Index: .idea/libraries/Maven__io_netty_netty_common_4_1_50_Final.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__io_netty_netty_common_4_1_50_Final.xml	(date 1611797483818)
++++ .idea/libraries/Maven__io_netty_netty_common_4_1_50_Final.xml	(date 1611797483818)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: io.netty:netty-common:4.1.50.Final">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-common/4.1.50.Final/netty-common-4.1.50.Final.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-common/4.1.50.Final/netty-common-4.1.50.Final-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-common/4.1.50.Final/netty-common-4.1.50.Final-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__io_netty_netty_handler_4_1_50_Final.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__io_netty_netty_handler_4_1_50_Final.xml	(date 1611797483826)
++++ .idea/libraries/Maven__io_netty_netty_handler_4_1_50_Final.xml	(date 1611797483826)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: io.netty:netty-handler:4.1.50.Final">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-handler/4.1.50.Final/netty-handler-4.1.50.Final.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-handler/4.1.50.Final/netty-handler-4.1.50.Final-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-handler/4.1.50.Final/netty-handler-4.1.50.Final-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__io_netty_netty_handler_proxy_4_1_50_Final.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__io_netty_netty_handler_proxy_4_1_50_Final.xml	(date 1611797483830)
++++ .idea/libraries/Maven__io_netty_netty_handler_proxy_4_1_50_Final.xml	(date 1611797483830)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: io.netty:netty-handler-proxy:4.1.50.Final">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-handler-proxy/4.1.50.Final/netty-handler-proxy-4.1.50.Final.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-handler-proxy/4.1.50.Final/netty-handler-proxy-4.1.50.Final-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-handler-proxy/4.1.50.Final/netty-handler-proxy-4.1.50.Final-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__io_netty_netty_resolver_4_1_45_Final.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__io_netty_netty_resolver_4_1_45_Final.xml	(date 1611797483838)
++++ .idea/libraries/Maven__io_netty_netty_resolver_4_1_45_Final.xml	(date 1611797483838)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: io.netty:netty-resolver:4.1.45.Final">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-resolver/4.1.45.Final/netty-resolver-4.1.45.Final.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-resolver/4.1.45.Final/netty-resolver-4.1.45.Final-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-resolver/4.1.45.Final/netty-resolver-4.1.45.Final-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__io_netty_netty_transport_4_1_50_Final.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__io_netty_netty_transport_4_1_50_Final.xml	(date 1611797483842)
++++ .idea/libraries/Maven__io_netty_netty_transport_4_1_50_Final.xml	(date 1611797483842)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: io.netty:netty-transport:4.1.50.Final">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-transport/4.1.50.Final/netty-transport-4.1.50.Final.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-transport/4.1.50.Final/netty-transport-4.1.50.Final-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-transport/4.1.50.Final/netty-transport-4.1.50.Final-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
+Index: .idea/libraries/Maven__jakarta_annotation_jakarta_annotation_api_1_3_5.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- .idea/libraries/Maven__jakarta_annotation_jakarta_annotation_api_1_3_5.xml	(date 1611797483846)
++++ .idea/libraries/Maven__jakarta_annotation_jakarta_annotation_api_1_3_5.xml	(date 1611797483846)
+@@ -0,0 +1,13 @@
++<component name="libraryTable">
++  <library name="Maven: jakarta.annotation:jakarta.annotation-api:1.3.5">
++    <CLASSES>
++      <root url="jar://$MAVEN_REPOSITORY$/jakarta/annotation/jakarta.annotation-api/1.3.5/jakarta.annotation-api-1.3.5.jar!/" />
++    </CLASSES>
++    <JAVADOC>
++      <root url="jar://$MAVEN_REPOSITORY$/jakarta/annotation/jakarta.annotation-api/1.3.5/jakarta.annotation-api-1.3.5-javadoc.jar!/" />
++    </JAVADOC>
++    <SOURCES>
++      <root url="jar://$MAVEN_REPOSITORY$/jakarta/annotation/jakarta.annotation-api/1.3.5/jakarta.annotation-api-1.3.5-sources.jar!/" />
++    </SOURCES>
++  </library>
++</component>
+\ No newline at end of file
