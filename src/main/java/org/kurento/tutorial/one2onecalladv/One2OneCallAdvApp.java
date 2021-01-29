@@ -39,6 +39,7 @@ import org.springframework.web.socket.server.standard.ServletServerContainerFact
 @EnableFeignClients
 public class One2OneCallAdvApp implements WebSocketConfigurer {
 
+  final static String DEFAULT_KMS_WS_URI = "ws://192.168.8.106:8888/kurento";
 
   @Bean
   public CallHandler callHandler() {
@@ -52,9 +53,9 @@ public class One2OneCallAdvApp implements WebSocketConfigurer {
 
   @Bean
   public KurentoClient kurentoClient() {
-    return KurentoClient.create();
+    return KurentoClient.create(System.getProperty("kms.ws.uri",
+            DEFAULT_KMS_WS_URI));
   }
-
   @Bean
   public ServletServerContainerFactoryBean createServletServerContainerFactoryBean() {
     ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean();
